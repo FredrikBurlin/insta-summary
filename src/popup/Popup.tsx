@@ -28,7 +28,6 @@ export const Popup = () => {
 
   return (
     <main>
-      <h3>Popup Page</h3>
       <button onClick={getSummary}>Summarise</button>
       {summary && (
         <div className="summary">
