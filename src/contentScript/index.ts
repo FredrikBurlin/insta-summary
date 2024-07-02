@@ -1,5 +1,15 @@
 console.info('contentScript is running hi')
 
+chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+  console.log('Message received:', request);
+  if (request.type === 'GET_ARTICLES') {
+    const articles = document.querySelectorAll('article');
+    console.log('Articles:', articles);
+    sendResponse({ articles: Array.from(articles).map(article => article.innerHTML) });
+  }
+});
+
+
 /// example of scrolling 10 times
 let scrollCount = 0
 const maxScrolls = 10
