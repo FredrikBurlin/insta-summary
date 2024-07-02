@@ -1,18 +1,9 @@
+import { getChatGPTSummary } from "./openai"
 console.info('contentScript is running hi')
-
-chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-  console.log('Message received:', request);
-  if (request.type === 'GET_ARTICLES') {
-    const articles = document.querySelectorAll('article');
-    console.log('Articles:', articles);
-    sendResponse({ articles: Array.from(articles).map(article => article.innerHTML) });
-  }
-});
-
 
 /// example of scrolling 10 times
 let scrollCount = 0
-const maxScrolls = 10
+const maxScrolls = 5
 const scrollInterval = 2000 // 2 seconds
 const uniqueItems = new Map<string, any>()
 
@@ -20,7 +11,7 @@ const uniqueItems = new Map<string, any>()
 function extractData(article: HTMLElement) {
   const username = article.querySelector('a[href^="/"]')?.textContent ?? 'unknown'
   const description = article.querySelectorAll('span[dir="auto"]')
-  const images = article.querySelectorAll('img[alt]')
+  const images = article.querySelectorAll('img[alt]') as NodeListOf<HTMLImageElement>;
   const time = article.querySelector('time')?.dateTime
   const inlineDiv = article.querySelector('div[style*="display: inline;"]')?.innerHTML ?? ''
   const textContent = article.querySelector('div[style*="display: inline;"]')?.textContent ?? ''
@@ -29,10 +20,10 @@ function extractData(article: HTMLElement) {
     who: username,
     time: time,
     text: textContent,
-    textHtml: inlineDiv,
+    //textHtml: inlineDiv,
     description: `${username}\n${description}`,
-    images: { all: images, profileSrc: images?.item(0)?.src, mainSrc: images?.item(1)?.src },
-    html: article.innerHTML,
+    //images: { all: images, profileSrc: images?.item(0)?.src, mainSrc: images?.item(1)?.src },
+    //html: article.innerHTML,
   }
 
   // Create a unique identifier (you might want to use a more robust method)
@@ -40,9 +31,6 @@ function extractData(article: HTMLElement) {
 
   return { uniqueId, data }
 }
-
-// Start checking if the page is ready
-checkIfPageIsReady()
 
 function getArticles() {
   const articles = document.querySelectorAll('article')
@@ -99,49 +87,40 @@ async function scrollToBottom() {
     document.body.innerText.includes('Suggested Posts')
   ) {
     console.log('Reached the end of new posts or found suggested posts.')
-    categorizePosts()
     getArticles()
+    console.log(1, uniqueItems);
     return
   }
 
   if (scrollCount < maxScrolls) {
-    setTimeout(scrollToBottom, scrollInterval)
+    setTimeout(() => scrollToBottom(), scrollInterval)
     getArticles()
   } else {
-    categorizePosts()
     getArticles()
+    console.log(2, uniqueItems);
+    return 
   }
+}
+
+async function getSummary() {
+  await scrollToBottom();
+  return getChatGPTSummary(Array.from(uniqueItems.values()))
 }
 
 async function checkIfPageIsReady() {
   const feedContainer = document.querySelector('main')
   if (feedContainer) {
-    await scrollToBottom()
+    chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+      if (request.type === 'GET_SUMMARY') {
+        getSummary().then((summary) => {
+          sendResponse({ summary })
+        });
+        return true;  // This is important to indicate asynchronous response
+      } 
+    });
   } else {
     setTimeout(checkIfPageIsReady, 1000)
   }
 }
 
-function categorizePosts() {
-  const posts = document.querySelectorAll('article')
-  const categorizedPosts = {
-    followed: [] as string[],
-    suggested: [] as string[],
-    sponsored: [] as string[],
-  }
-
-  posts.forEach((post: HTMLElement) => {
-    if (post.innerText.startsWith('Suggested')) {
-      categorizedPosts.suggested.push(post.innerText)
-    } else if (post.innerText.includes('Sponsored')) {
-      categorizedPosts.sponsored.push(post.innerText)
-    } else {
-      categorizedPosts.followed.push(post.innerText)
-    }
-  })
-
-  console.log(JSON.stringify(categorizedPosts, null, 2))
-}
-
-// Start checking if the page is ready
-checkIfPageIsReady()
+checkIfPageIsReady();

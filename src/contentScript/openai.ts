@@ -1,8 +1,8 @@
-async function sendToOpenAI(posts: any) {
+export async function getChatGPTSummary(posts: any) {
   const storage = await chrome.storage.sync.get(['apiKey'])
   const apiKey = storage.apiKey
   const apiUrl = 'https://api.openai.com/v1/chat/completions' // Make sure the URL is correct for the OpenAI API
-
+  console.log(JSON.stringify(posts, null, 2))
   const body = {
     model: 'gpt-4o',
     messages: [
@@ -12,12 +12,23 @@ async function sendToOpenAI(posts: any) {
       },
       {
         role: 'user',
-        content: `Here are the posts from instagram:\n${JSON.stringify(posts, null, 2)}\nSummarize the posts as a easy-to-read paragraph of plain text. Do not includes ads.`,
+        content: `Here are the posts from instagram:\n${JSON.stringify(posts, null, 2)}\n
+        Summarize the posts as a easy-to-read text maximum 500 chars in html.
+        Style the html. Make names more readable.
+        Make sure to not include any markdown in the response.
+        Add new lines for readabillity. The purpose is to let me know what the posts are about.
+        Do not includes ads. Exclude likes, hashtags, and comment counts.
+        Example
+        <p><b>First User</b> The summmary</p>
+        <p><b>second User</b> The summmary</p>
+        ...`,
       },
     ],
     max_tokens: 300,
   }
-
+/*
+        Do not includes ads. Exclude hashtags likes and comment counts. Make names more readable. Use Donald Trump's language style.
+*/
   try {
     const response = await fetch(apiUrl, {
       method: 'POST',
@@ -40,7 +51,7 @@ async function sendToOpenAI(posts: any) {
   }
 }
 
-function displayDialog(message: string) {
+function displayDialog(htmlString: string) {
   const dialog = document.createElement('div')
   dialog.style.position = 'fixed'
   dialog.style.top = '50%'
@@ -71,10 +82,10 @@ function displayDialog(message: string) {
   closeButton.onclick = () => dialog.remove()
   dialog.appendChild(closeButton)
 
-  const messageElement = document.createElement('p')
-  messageElement.textContent = message
+  const messageElement = document.createElement('div')
+  messageElement.innerHTML = htmlString
   messageElement.style.margin = '20px 0 0 0'
-  messageElement.style.textAlign = 'center'
+  messageElement.style.textAlign = 'left'
   dialog.appendChild(messageElement)
 
   document.body.appendChild(dialog)

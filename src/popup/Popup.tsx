@@ -1,16 +1,9 @@
 import { useState, useEffect } from 'react'
-
 import './Popup.css'
 
 export const Popup = () => {
   const [count, setCount] = useState(0)
-  const link = 'https://github.com/guocaoyi/create-chrome-ext'
-
-  const minus = () => {
-    if (count > 0) setCount(count - 1)
-  }
-
-  const add = () => setCount(count + 1)
+  const [summary, setSummary] = useState(null)
 
   useEffect(() => {
     chrome.storage.sync.get(['count'], (result) => {
@@ -23,17 +16,26 @@ export const Popup = () => {
     chrome.runtime.sendMessage({ type: 'COUNT', count })
   }, [count])
 
-  const getArticles = () => {
+  const getSummary = () => {
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-      chrome.tabs.sendMessage(tabs[0].id!, { type: 'GET_ARTICLES' }, (response) => {
-        console.log('Articles from page:', response.articles);
+      chrome.tabs.sendMessage(tabs[0].id!, { type: 'GET_SUMMARY' }, (response) => {
+        console.log('Sent from page:', response);
+        setSummary(response.summary)
       });
     });
-  };
+  }
+
+
   return (
     <main>
       <h3>Popup Page</h3>
-      <button onClick={getArticles}>Get Articles</button>
+      <button onClick={getSummary}>Summarise</button>
+      {summary && (
+        <div className="summary">
+          <h4>Summary</h4>
+          <pre>{JSON.stringify(summary, null, 2)}</pre>
+        </div>
+      )}
     </main>
   )
 }
